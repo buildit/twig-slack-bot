@@ -4,9 +4,8 @@ require('moment-timezone');
 const rp = require('request-promise-native');
 const extent = require('d3-array').extent;
 const powScale = require('d3-scale').scalePow;
-const icons = require('./icons')();
 
-const api = 'http://localhost:3000';
+const api = 'http://localhost:3000/v2';
 const token = process.env.TOKEN;
 const interval = 60 * 60;
 const name = 'slack-analysis';
@@ -24,6 +23,11 @@ const chatRooms = {
   },
 };
 
+/**
+ * Login and keep the cookie.
+ *
+ * @returns RequestPromise.
+ */
 function login() {
   const options = {
     method: 'POST',
@@ -38,48 +42,13 @@ function login() {
   return rp(options);
 }
 
-function putSnapshot(twiglet) {
-  const options = {
-    method: 'PUT',
-    uri: `${api}/twiglets/${name}/snapshots`,
-    body: {
-      links: twiglet.links,
-      model: twiglet.model,
-      nodes: twiglet.nodes,
-      snapshotDescription: twiglet.snapshotDescription,
-      snapshotName: twiglet.snapshotName,
-    },
-    json: true,
-    jar: true,
-  };
-  return rp(options);
-}
-
-function putTwigletModel(twigletModel) {
-  const getModelOptions = {
-    method: 'GET',
-    uri: `${api}/twiglets/${name}/model`,
-    transform(body) {
-      return JSON.parse(body);
-    },
-  };
-  return rp(getModelOptions)
-  .then((model) => {
-    const putModelOptions = {
-      method: 'PUT',
-      uri: `${api}/twiglets/${name}/model`,
-      body: {
-        _rev: model._rev, // eslint-disable-line
-        entities: twigletModel.entities,
-      },
-      json: true,
-      jar: true,
-    };
-    return rp(putModelOptions);
-  });
-}
-
-function putTwiglet(twiglet) {
+/**
+ * Gets the latest revision number from twiglet then patches the nodes and links.
+ *
+ * @param {any} twiglet
+ * @returns RequestPromise
+ */
+function patchTwiglet(twiglet) {
   const getOptions = {
     method: 'GET',
     uri: `${api}/twiglets/${name}`,
@@ -89,15 +58,12 @@ function putTwiglet(twiglet) {
   };
   return rp(getOptions).then((response) => {
     const putOptions = {
-      method: 'PUT',
+      method: 'PATCH',
       uri: `${api}/twiglets/${name}`,
       body: {
         _rev: response._rev, // eslint-disable-line
-        commitMessage: twiglet.snapshotName,
-        description: response.description,
-        doReplacement: true,
+        commitMessage: twiglet.commitMessage,
         links: twiglet.links,
-        name: response.name,
         nodes: twiglet.nodes,
       },
       json: true,
@@ -107,11 +73,32 @@ function putTwiglet(twiglet) {
   });
 }
 
-function updateTwiglet(twiglet) {
-  return putTwigletModel(twiglet.model)
-  .then(() => putTwiglet(twiglet));
+/**
+ * Creates an event on the twiglet.
+ *
+ * @param {any} eventName what the event should be called.
+ * @returns RequestPromise
+ */
+function createEvent(eventName) {
+  const postOptions = {
+    method: 'POST',
+    uri: `${api}/twiglets/${name}/events`,
+    body: {
+      name: eventName,
+    },
+    json: true,
+    jar: true,
+  };
+  return rp(postOptions);
 }
 
+/**
+ * Counts the members in each room.
+ *
+ * @param {any} members the members of the chat room
+ * @param {any} users the total list of users
+ * @returns RequestPromise
+ */
 function countMembers(members, users) {
   let active = 0;
   let inactive = 0;
@@ -125,15 +112,27 @@ function countMembers(members, users) {
   return [active, inactive];
 }
 
-function initializeTwiglet(snapshotName, snapshotDescription) {
+/**
+ * Initializes an empty twiglet to pass around
+ *
+ * @param {any} commitMessage the commit message for this particular patch.
+ * @returns RequestPromise
+ */
+function initializeTwiglet(commitMessage) {
   return {
-    snapshotName,
-    snapshotDescription,
+    commitMessage,
     nodes: [],
     links: [],
   };
 }
 
+/**
+ * Gets the color that this particular node should be.
+ *
+ * @param {any} channel the channel being checked for.
+ * @param {any} key the node type.
+ * @returns RequestPromise
+ */
 function getColor(channel, key) {
   const array = chatRooms[channel.type][channel.name][key];
   if (array) {
@@ -147,36 +146,18 @@ function getColor(channel, key) {
   return '#0066ff';
 }
 
-const classKeys = {
-  members: 'users',
-  activeMembers: 'user',
-  inactiveMembers: 'user-o',
-  messages: 'commenting',
-  group: 'comments',
-};
-
-function createAndReturnEntity(model, className, color, size) {
-  const entityName = `${className}_${color}_${size}`;
-  if (!model.entities[entityName]) {
-    Object.assign(model.entities, {
-      [entityName]: {
-        class: className,
-        color,
-        size,
-        type: entityName,
-        image: icons[className],
-      },
-    });
-  }
-  return entityName;
-}
-
-function createNodesAndLinks(twiglet, model, channel, scaleFunctions) {
-  const type = channel.type === 'group' ? 'comments' : 'comments-o';
+/**
+ * Creates a bunch of nodes and links for this twiglet.
+ *
+ * @param {any} twiglet the twiglet created above
+ * @param {any} channel the channel this specific set is for
+ * @param {any} scaleFunctions functions for scaling the node.
+ */
+function createNodesAndLinks(twiglet, channel, scaleFunctions) {
   const channelNode = {
     name: channel.name,
     id: channel.id,
-    type: createAndReturnEntity(model, type, '#000000', 40),
+    type: channel.type,
     attrs: [],
   };
   twiglet.nodes.push(channelNode);
@@ -186,7 +167,9 @@ function createNodesAndLinks(twiglet, model, channel, scaleFunctions) {
     const keyNode = {
       name: `${key} - ${channel[key]}`,
       id: `${channel.id}-${key}`,
-      type: createAndReturnEntity(model, classKeys[key], getColor(channel, key), size),
+      _color: getColor(channel, key),
+      _size: size,
+      type: key,
       attrs: [],
     };
     twiglet.nodes.push(keyNode);
@@ -200,21 +183,19 @@ function createNodesAndLinks(twiglet, model, channel, scaleFunctions) {
 }
 
 function getSummary() {
-  const model = {
-    entities: {
-    },
-  };
   let users = {};
   let channels = {};
   const now = moment(new Date()).utc();
   const timeIntervalAgo = now.subtract(interval, 'second').unix();
 
   return Slack.users.list({ token, presence: true })
+  // Get the users from slack
   .then((usersResults) => {
     users = usersResults.members.reduce((object, member) =>
       Object.assign(object, { [member.id]: member }), {});
     return Slack.channels.list({ token });
   })
+  // Get the channels from slack.
   .then((channelsResults) => {
     const promises = [];
     channels = channelsResults.channels
@@ -240,12 +221,14 @@ function getSummary() {
     }, {});
     return Promise.all(promises);
   })
+  // Get the messages from each slack channel.
   .then((messages) => {
     messages.forEach((message) => {
       channels[message.name].messages = message.messages.length;
     });
     return Slack.groups.list({ token });
   })
+  // Get the groups from slack (locked channels)
   .then((groupResults) => {
     const promises = [];
     channels = groupResults.groups
@@ -271,6 +254,7 @@ function getSummary() {
     }, channels);
     return Promise.all(promises);
   })
+  // Get the messages from the group.
   .then((messages) => {
     messages.forEach((message) => {
       channels[message.name].messages = message.messages.length;
@@ -295,13 +279,12 @@ function getSummary() {
       messages: powScale().exponent(1 / 3).range([10, 30]).domain(extent(domains.messages)),
     };
     Reflect.ownKeys(channels).forEach(channelName =>
-        createNodesAndLinks(twiglet, model, channels[channelName], scaleFunctions));
-    twiglet.model = model;
+        createNodesAndLinks(twiglet, channels[channelName], scaleFunctions));
     login()
-    .then(() => updateTwiglet(twiglet))
-    .then(() => putSnapshot(twiglet))
-    .then(() => console.log('snapshot placed'))
-    .catch(error => console.error('error!', error.error));
+    .then(() => patchTwiglet(twiglet))
+    .then(() => createEvent(now.toLocaleString()))
+    .then(() => console.log('snapshot placed')) // eslint-disable-line
+    .catch(error => console.error('error!', error.error)); // eslint-disable-line
   })
   .catch((error) => {
     console.warn(error); // eslint-disable-line
