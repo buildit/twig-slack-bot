@@ -6,7 +6,7 @@ To run locally, clone the repo. Set a Slack API token as a TOKEN variable in .en
 
 You can edit the config.js file to change the slack channels, the array range that adjusts the node colors, twiglet name, time interval, slack token, api url, etc.
 
-Then:
+Then run in the terminal:
 ```Shell
 TOKEN=SLACK_TOKEN TWIG_SLACK_API=API_URL node index.js
 ```
