@@ -5,23 +5,7 @@ const rp = require('request-promise-native');
 const extent = require('d3-array').extent;
 const powScale = require('d3-scale').scalePow;
 
-const api = 'http://localhost:3000/v2';
-const token = process.env.TOKEN;
-const interval = 60 * 60;
-const name = 'slack-analysis';
-
-
-const chatRooms = {
-  channel: {
-    random: { activeMembers: [50, 70], messages: [5, 10] },
-    twig: { activeMembers: [10, 15], messages: [2, 4] },
-    'tech-support': { activeMembers: [40, 65], messages: [2, 4] },
-  },
-  group: {
-    buildit: { activeMembers: [20, 40], messages: [2, 4] },
-    'engineering-usa': { activeMembers: [8, 15], messages: [5, 10] },
-  },
-};
+const config = require('./config');
 
 /**
  * Login and keep the cookie.
@@ -31,10 +15,10 @@ const chatRooms = {
 function login() {
   const options = {
     method: 'POST',
-    uri: `${api}/login`,
+    uri: `${config.api}/login`,
     body: {
-      email: 'ben.hernandez@corp.riglet.io',
-      password: 'Z3nB@rnH3n',
+      email: config.email,
+      password: config.password,
     },
     json: true,
     jar: true,
@@ -51,7 +35,7 @@ function login() {
 function patchTwiglet(twiglet) {
   const getOptions = {
     method: 'GET',
-    uri: `${api}/twiglets/${name}`,
+    uri: `${config.api}/twiglets/${config.name}`,
     transform(body) {
       return JSON.parse(body);
     },
@@ -59,7 +43,7 @@ function patchTwiglet(twiglet) {
   return rp(getOptions).then((response) => {
     const putOptions = {
       method: 'PATCH',
-      uri: `${api}/twiglets/${name}`,
+      uri: `${config.api}/twiglets/${config.name}`,
       body: {
         _rev: response._rev, // eslint-disable-line
         commitMessage: twiglet.commitMessage,
@@ -82,7 +66,7 @@ function patchTwiglet(twiglet) {
 function createEvent(eventName) {
   const postOptions = {
     method: 'POST',
-    uri: `${api}/twiglets/${name}/events`,
+    uri: `${config.api}/twiglets/${config.name}/events`,
     body: {
       name: eventName,
     },
@@ -94,6 +78,7 @@ function createEvent(eventName) {
 
 /**
  * Counts the members in each room.
+ * Looks at the presence of each member, and based on that adds to away or inactive
  *
  * @param {any} members the members of the chat room
  * @param {any} users the total list of users
@@ -134,15 +119,17 @@ function initializeTwiglet(commitMessage) {
  * @returns RequestPromise
  */
 function getColor(channel, key) {
-  const array = chatRooms[channel.type][channel.name][key];
+  // array is a range based roughly on the channel's size
+  const array = config.chatRooms[channel.type][channel.name][key];
   if (array) {
     if (channel[key] < array[0]) {
       return '#cc0000';
-    } else if (channel[key] < array[0]) {
+    } else if (channel[key] < array[1]) {
       return '#cccc00';
     }
     return '#006600';
   }
+  // inactiveMembers and members will always render as blue
   return '#0066ff';
 }
 
@@ -165,7 +152,7 @@ function createNodesAndLinks(twiglet, channel, scaleFunctions) {
   nodeKeys.forEach((key) => {
     const size = Math.round(scaleFunctions[key](channel[key]));
     const keyNode = {
-      name: `${key} - ${channel[key]}`,
+      name: `${channel.name}: ${key} - ${channel[key]}`,
       id: `${channel.id}-${key}`,
       _color: getColor(channel, key),
       _size: size,
@@ -185,8 +172,9 @@ function createNodesAndLinks(twiglet, channel, scaleFunctions) {
 function getSummary() {
   let users = {};
   let channels = {};
+  const token = config.token;
   const now = moment(new Date()).utc();
-  const timeIntervalAgo = now.subtract(interval, 'second').unix();
+  const timeIntervalAgo = now.subtract(config.totalInterval, 'second').unix();
 
   return Slack.users.list({ token, presence: true })
   // Get the users from slack
@@ -199,7 +187,7 @@ function getSummary() {
   .then((channelsResults) => {
     const promises = [];
     channels = channelsResults.channels
-    .filter(channel => chatRooms.channel[channel.name])
+    .filter(channel => config.chatRooms.channel[channel.name])
     .reduce((object, channel) => {
       promises.push(Slack.channels.history({
         token,
@@ -232,7 +220,7 @@ function getSummary() {
   .then((groupResults) => {
     const promises = [];
     channels = groupResults.groups
-    .filter(group => chatRooms.group[group.name])
+    .filter(group => config.chatRooms.group[group.name])
     .reduce((object, group) => {
       promises.push(Slack.groups.history({
         token,
@@ -261,7 +249,7 @@ function getSummary() {
     });
   })
   .then(() => {
-    const twiglet = initializeTwiglet(`${now.format('HH')}:00`);
+    const twiglet = initializeTwiglet(`${now.format('HH')}:00 event created`);
     const domains = Reflect.ownKeys(channels).reduce((object, channelKey) => {
       const channel = channels[channelKey];
       object.members.push(channel.members);
@@ -270,6 +258,7 @@ function getSummary() {
       object.messages.push(channel.messages);
       return object;
     }, { members: [], activeMembers: [], inactiveMembers: [], messages: [] });
+    // scaleFunctions helps to generate the size of the nodes
     const scaleFunctions = {
       members: powScale().exponent(1 / 3).range([10, 30]).domain(extent(domains.members)),
       activeMembers: powScale().exponent(1 / 3)
@@ -291,6 +280,12 @@ function getSummary() {
   });
 }
 
-getSummary();
+const eventInterval = setInterval(getSummary, config.interval * 1000);
 
-setInterval(getSummary, interval * 1000);
+function stopSummary() {
+  clearInterval(eventInterval);
+  console.log('stop summary'); // eslint-disable-line
+}
+
+getSummary();
+setTimeout(() => stopSummary(), config.totalInterval * 1000);

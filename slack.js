@@ -13,4 +13,4 @@ module.exports = class SlackWebApi {
   getChannels() {
     return rp.get(`${this.baseUrl}channels.list?token=${this.token}`);
   }
-}
+};
