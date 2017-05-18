@@ -4,7 +4,7 @@ This is an example of how [Twig](https://github.com/buildit/twig) can be used to
 
 To run locally, clone the repo. Set a Slack API token as a TOKEN variable in .env.
 
-Create a twiglet with an appropriate model (There is a slack model that exists on [staging](http://staging.twig2.riglet).) You can edit the config.js file to change the slack channels, the array range that adjusts the node colors, twiglet name, time interval, slack token, api url, etc. Make sure the twiglet name matches the correct twiglet you want to send events to. 
+Create a twiglet with an appropriate model (There is a slack model that exists on [staging](http://staging.twig2.riglet/model/slack).) You can edit the config.js file to change the slack channels, the array range that adjusts the node colors, twiglet name, time interval, slack token, api url, etc. Make sure the twiglet name matches the correct twiglet you want to send events to. 
 
 Then run in the terminal:
 ```Shell
