@@ -22,6 +22,7 @@ const config = {
       'london-pod': { activeMembers: [50, 80], messages: [5, 10] },
       'london-wework-pod': { activeMembers: [10, 45], messages: [3, 6] },
       nycfolks: { activeMembers: [3, 8], messages: [2, 4] },
+      edinburgh: { activeMembers: [9, 33], messages: [3, 6] },
     },
   },
 };
