@@ -23,8 +23,11 @@
   "dependencies": {
     "d3-array": "^1.1.1",
     "d3-scale": "^1.0.5",
+    "log4js": "^1.1.1",
     "moment": "^2.18.0",
     "moment-timezone": "^0.5.11",
+    "object.entries": "^1.0.4",
+    "ramda": "^0.23.0",
     "request-promise-native": "^1.0.3",
     "slack-api": "^0.1.12",
     "slackbots": "^1.0.2"
