@@ -1,5 +1,5 @@
 const config = {
-  api: 'http://staging.twig-api.riglet/v2',
+  apiUrl: 'http://staging.twig-api.riglet/v2',
   token: process.env.TOKEN,
   totalInterval: 60 * 60 * 24,
   interval: 60 * 60,
@@ -8,21 +8,142 @@ const config = {
   password: 'Z3nB@rnH3n',
   chatRooms: {
     group: {
-      'engineering-usa': { activeMembers: [7, 20], messages: [2, 4] },
-      buildit: { activeMembers: [50, 80], messages: [5, 10] },
+      'engineering-usa': {
+        activeMembers: {
+          failureIfUnder: 7,
+          happinessIfOver: 20,
+        },
+        messages: {
+          failureIfUnder: 2,
+          happinessIfOver: 4,
+        },
+        category: 'studio',
+      },
+      buildit: {
+        activeMembers: {
+          failureIfUnder: 50,
+          happinessIfOver: 80,
+        },
+        messages: {
+          failureIfUnder: 5,
+          happinessIfOver: 10,
+        },
+        category: 'studio',
+      },
     },
     channel: {
-      'digital-delivery': { activeMembers: [10, 45], messages: [3, 6] },
-      'platform-engineering': { activeMembers: [12, 50], messages: [5, 10] },
-      'tribe-front-end-engin': { activeMembers: [10, 45], messages: [3, 6] },
-      'tribe-mobile': { activeMembers: [7, 20], messages: [2, 4] },
-      'creative-tech': { activeMembers: [9, 35], messages: [3, 6] },
-      'denver-pod': { activeMembers: [3, 7], messages: [2, 4] },
-      'dublin-pod': { activeMembers: [8, 25], messages: [2, 4] },
-      'london-pod': { activeMembers: [50, 80], messages: [5, 10] },
-      'london-wework-pod': { activeMembers: [10, 45], messages: [3, 6] },
-      nycfolks: { activeMembers: [3, 8], messages: [2, 4] },
-      edinburgh: { activeMembers: [9, 33], messages: [3, 6] },
+      'digital-delivery': {
+        activeMembers: {
+          failureIfUnder: 10,
+          happinessIfOver: 45,
+        },
+        messages: {
+          failureIfUnder: 3,
+          happinessIfOver: 6,
+        },
+        category: 'tribe',
+      },
+      'platform-engineering': {
+        activeMembers: {
+          failureIfUnder: 12,
+          happinessIfOver: 50,
+        },
+        messages: {
+          failureIfUnder: 5,
+          happinessIfOver: 10,
+        },
+        category: 'tribe',
+      },
+      'tribe-front-end-engin': {
+        activeMembers: {
+          failureIfUnder: 10,
+          happinessIfOver: 45,
+        },
+        messages: {
+          failureIfUnder: 3,
+          happinessIfOver: 6,
+        },
+        category: 'tribe' },
+      'tribe-mobile': {
+        activeMembers: {
+          failureIfUnder: 7,
+          happinessIfOver: 20,
+        },
+        messages: {
+          failureIfUnder: 2,
+          happinessIfOver: 4,
+        },
+        category: 'tribe' },
+      'creative-tech': {
+        activeMembers: {
+          failureIfUnder: 9,
+          happinessIfOver: 35,
+        },
+        messages: {
+          failureIfUnder: 3,
+          happinessIfOver: 6,
+        },
+        category: 'tribe' },
+      'denver-pod': {
+        activeMembers: {
+          failureIfUnder: 3,
+          happinessIfOver: 7,
+        },
+        messages: {
+          failureIfUnder: 2,
+          happinessIfOver: 4,
+        },
+        category: 'studio' },
+      'dublin-pod': {
+        activeMembers: {
+          failureIfUnder: 8,
+          happinessIfOver: 25,
+        },
+        messages: {
+          failureIfUnder: 2,
+          happinessIfOver: 4,
+        },
+        category: 'studio' },
+      'london-pod': {
+        activeMembers: {
+          failureIfUnder: 50,
+          happinessIfOver: 80,
+        },
+        messages: {
+          failureIfUnder: 5,
+          happinessIfOver: 10,
+        },
+        category: 'studio' },
+      'london-wework-pod': {
+        activeMembers: {
+          failureIfUnder: 10,
+          happinessIfOver: 45,
+        },
+        messages: {
+          failureIfUnder: 3,
+          happinessIfOver: 6,
+        },
+        category: 'studio' },
+      nycfolks: {
+        activeMembers: {
+          failureIfUnder: 3,
+          happinessIfOver: 8,
+        },
+        messages: {
+          failureIfUnder: 2,
+          happinessIfOver: 4,
+        },
+        category: 'studio' },
+      edinburgh: {
+        activeMembers: {
+          failureIfUnder: 9,
+          happinessIfOver: 33,
+        },
+        messages: {
+          failureIfUnder: 3,
+          happinessIfOver: 6,
+        },
+        category: 'studio' },
     },
   },
 };

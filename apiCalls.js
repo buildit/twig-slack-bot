@@ -1,5 +1,5 @@
 const rp = require('request-promise-native');
-const { apiUrl, email, password, twigletName } = require('./config');
+const config = require('./config');
 
 /**
  * Login and keep the cookie.
@@ -9,10 +9,10 @@ const { apiUrl, email, password, twigletName } = require('./config');
 function login() {
   const options = {
     method: 'POST',
-    uri: `${apiUrl}/login`,
+    uri: `${config.apiUrl}/login`,
     body: {
-      email,
-      password,
+      email: config.email,
+      password: config.password,
     },
     json: true,
     jar: true,
@@ -29,7 +29,7 @@ function login() {
 function patchTwiglet(twiglet) {
   const getOptions = {
     method: 'GET',
-    uri: `${apiUrl}/twiglets/${twigletName}`,
+    uri: `${config.apiUrl}/twiglets/${config.name}`,
     transform(body) {
       return JSON.parse(body);
     },
@@ -60,7 +60,7 @@ function patchTwiglet(twiglet) {
 function createEvent(eventName) {
   const getOptions = {
     method: 'GET',
-    uri: `${apiUrl}/twiglets/${twigletName}`,
+    uri: `${config.apiUrl}/twiglets/${config.name}`,
     transform(body) {
       return JSON.parse(body);
     },
