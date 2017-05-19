@@ -8,6 +8,10 @@ const { login, patchTwiglet, createEvent } = require('./apiCalls');
 
 const logger = log4js.getLogger();
 
+/**
+ * Gets a summary of the slack status at the current time.
+ *
+ */
 function getSummary() {
   let users = {};
   let channels = {};

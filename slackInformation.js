@@ -33,6 +33,15 @@ function getScaleFunctions(channels) {
   };
 }
 
+/**
+ * Creates nodes and links for a specific channel/group
+ *
+ * @param {any} twiglet the entire twiglet.
+ * @param {any} channel the channel or group to summarize.
+ * @param {any} scaleFunctions Scaling the icons across multiple channels.
+ * @param {any} chatRoom the room from the config file.
+ * @returns a copy of the twiglet with new information.
+ */
 function createNodesAndLinks(twiglet, channel, scaleFunctions, chatRoom) {
   const updatedTwiglet = R.clone(twiglet);
   const channelNode = {
@@ -65,6 +74,14 @@ function createNodesAndLinks(twiglet, channel, scaleFunctions, chatRoom) {
   return updatedTwiglet;
 }
 
+/**
+ * Converts the channels to an object which summarizes the channel.
+ *
+ * @param {any} users all of the slack users, on and offline.
+ * @param {any} filteredChannels the channels we actually care about.
+ * @param {any} type is this a "group" or a "channel".
+ * @returns an object representing the channel.
+ */
 function channelsToObjects(users, filteredChannels, type) {
   return filteredChannels.reduce((object, channel) => {
     const { activeMembers, inactiveMembers } = countMembers(channel.members, users);
@@ -81,6 +98,14 @@ function channelsToObjects(users, filteredChannels, type) {
   }, {});
 }
 
+/**
+ * Gets the messages from a specific group or channel.
+ *
+ * @param {any} token the slack token
+ * @param {any} timeIntervalAgo how long in the past to get messages (max of 100)
+ * @param {any} type is this a "group" or "channel"
+ * @returns Promise of messages to come.
+ */
 function getMessagesFromChannelAsPromise(token, timeIntervalAgo, type) {
   return channel =>
     Slack[`${type}s`].history({
@@ -91,27 +116,40 @@ function getMessagesFromChannelAsPromise(token, timeIntervalAgo, type) {
     .then(results => Object.assign(results, { name: channel.name }));
 }
 
-function processChannels(token, users, timeIntervalAgo, filteringObject, channelsResults, type) {
-  const filteredChannels = channelsResults[`${type}s`]
-    .filter(channel => filteringObject[type][channel.name]);
-  const channelsObject = channelsToObjects(users, filteredChannels, type);
-  return Promise.all(
-    filteredChannels.map(getMessagesFromChannelAsPromise(token, timeIntervalAgo, type)))
-    .then((messages) => {
-      messages.forEach((message) => {
-        channelsObject[message.name].messages = message.messages.length;
-        return channelsObject;
-      });
-      return channelsObject;
+/**
+ * Processes an array of channels (or groups)
+ *
+ * @param {any} token the slack token.
+ * @param {any} users all of the users, on and offline.
+ * @param {any} timeIntervalAgo how far in the past to check messages.
+ * @param {any} filteredChannels the channels we care about.
+ * @param {any} type "group" or "channel".
+ * @returns Promise full of channels (or groups)
+ */
+function getAllChannels(token, users, timeIntervalAgo, filteringObject, type) {
+  return Slack[`${type}s`].list({ token })
+    .then((channelsResults) => {
+      const filteredChannels = channelsResults[`${type}s`].filter(channel => filteringObject[type][channel.name]);
+      const channelsObject = channelsToObjects(users, filteredChannels, type);
+      return Promise.all(
+        filteredChannels.map(getMessagesFromChannelAsPromise(token, timeIntervalAgo, type)))
+        .then((messages) => {
+          messages.forEach((message) => {
+            channelsObject[message.name].messages = message.messages.length;
+            return channelsObject;
+          });
+          return channelsObject;
+        });
     });
 }
 
-function getAllChannels(token, users, timeIntervalAgo, filteringObject, type) {
-  return Slack[`${type}s`].list({ token })
-    .then(channelsResults =>
-      processChannels(token, users, timeIntervalAgo, filteringObject, channelsResults, type));
-}
-
+/**
+ * Gets all of the users from slack, on and offline.
+ *
+ * @param {any} token the slack token
+ * @param {boolean} [presence=true] if we care about their away status.
+ * @returns a promise full of users.
+ */
 function getAllUsers(token, presence = true) {
   return Slack.users.list({ token, presence });
 }
