@@ -134,6 +134,20 @@ function getColor(channel, key) {
 }
 
 /**
+ * Gets the color that this particular channel node should be based on if its a studio or tribe.
+ *
+ * @param {any} channel the channel being checked for.
+ * @param {any} key the node type.
+ * @returns RequestPromise
+ */
+function getColorForChannel(channel) {
+  if (config.chatRooms[channel.type][channel.name].category === 'tribe') {
+    return '#A020F0';
+  }
+  return '#000000';
+}
+
+/**
  * Creates a bunch of nodes and links for this twiglet.
  *
  * @param {any} twiglet the twiglet created above
@@ -145,6 +159,7 @@ function createNodesAndLinks(twiglet, channel, scaleFunctions) {
     name: channel.name,
     id: channel.id,
     type: channel.type,
+    _color: getColorForChannel(channel),
     attrs: [],
   };
   twiglet.nodes.push(channelNode);
